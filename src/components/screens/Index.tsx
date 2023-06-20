@@ -1,97 +1,130 @@
-import { Dialog } from '@headlessui/react';
-import { useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import uuid from 'react-uuid';
+import { collection, getDocs, query, addDoc } from 'firebase/firestore';
 import { useAuthState } from '~/components/contexts/UserContext';
-import { SignInButton } from '~/components/domain/auth/SignInButton';
-import { SignOutButton } from '~/components/domain/auth/SignOutButton';
 import { Head } from '~/components/shared/Head';
+import { useFirestore } from '~/lib/firebase';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Gasto } from '~/interfaces/interfaces';
+import Table from '../shared/Table';
 
 function Index() {
-  const { state } = useAuthState();
-  const [isOpen, setIsOpen] = useState(true);
-  const completeButtonRef = useRef(null);
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const firestore = useFirestore();
+  const [newGasto, setNewGasto] = useState<Partial<Gasto>>({
+    name: '',
+    description: '',
+    price: '',
+  });
+  const newGastoSucess = () => toast.success('Gasto añadido');
+  const newGastoError = () => toast.error('Ha habido un error creando el gasto');
+
+  useEffect(() => {
+    async function fetchData() {
+      const gastosCollection = collection(firestore, 'gastos');
+      const gastosQuery = query(gastosCollection);
+      const querySnapshot = await getDocs(gastosQuery);
+      const fetchedData: Gasto[] = [];
+      querySnapshot.forEach((gst) => {
+        fetchedData.push({ id: gst.id, ...gst.data() } as Gasto);
+      });
+      setGastos(fetchedData);
+    }
+    fetchData();
+  }, []);
+
+  enum InputGasto {
+    Name = 'name',
+    Description = 'desc',
+    Price = 'price',
+  }
+
+  function handleInputChange(field: InputGasto, value: string) {
+    setNewGasto({ ...newGasto, [field]: value });
+  }
+  async function handleFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    console.log('Enviando....');
+
+    try {
+      const gastosCollection = collection(firestore, 'gastos');
+      const addNewGasto: Gasto = {
+        ...newGasto,
+        id: uuid(),
+        buyDate: new Date(),
+      };
+      await addDoc(gastosCollection, addNewGasto);
+      newGastoSucess();
+      setGastos([...gastos, addNewGasto]);
+      setNewGasto({
+        name: '',
+        description: '',
+        price: '',
+      });
+    } catch (error) {
+      newGastoError();
+    }
+
+    // Save data to firebase
+    // Update State of Gastos
+    // Clear form
+  }
 
   return (
     <>
       <Head title="TOP PAGE" />
-      <div className="hero min-h-screen">
-        <div className="text-center hero-content">
-          <div>
-            <h1 className="text-3xl font-bold">
-              <a className="link link-primary" target="_blank" href="https://vitejs.dev/" rel="noreferrer">
-                Vite
-              </a>{' '}
-              +{' '}
-              <a className="link link-primary" target="_blank" href="https://reactjs.org/" rel="noreferrer">
-                React
-              </a>{' '}
-              +{' '}
-              <a className="link link-primary" target="_blank" href="https://www.typescriptlang.org/" rel="noreferrer">
-                TypeScript
-              </a>{' '}
-              +{' '}
-              <a className="link link-primary" target="_blank" href="https://tailwindcss.com/" rel="noreferrer">
-                TailwindCSS
-              </a>{' '}
-              Starter
-            </h1>
-            <p className="mt-4 text-lg">
-              For fast <b>prototyping</b>. Already set up{' '}
-              <a
-                className="link link-primary"
-                target="_blank"
-                href="https://github.com/firebase/firebase-js-sdk"
-                rel="noreferrer"
-              >
-                Firebase(v9)
-              </a>
-              ,{' '}
-              <a className="link link-primary" target="_blank" href="https://daisyui.com/" rel="noreferrer">
-                daisyUI
-              </a>
-              ,{' '}
-              <a className="link link-primary" target="_blank" href="https://github.com/eslint/eslint" rel="noreferrer">
-                ESLint
-              </a>
-              ,{' '}
-              <a
-                className="link link-primary"
-                target="_blank"
-                href="https://github.com/prettier/prettier"
-                rel="noreferrer"
-              >
-                Prettier
-              </a>
-              .
-            </p>
-            <div className="mt-4 grid gap-2">
-              {state.state === 'UNKNOWN' ? null : state.state === 'SIGNED_OUT' ? <SignInButton /> : <SignOutButton />}
-              <button onClick={() => setIsOpen(true)}>Display Dialog</button>
-            </div>
+      <Table gastos={gastos} />
+      <main className="flex justify-center container">
+        <div className="card w-96 bg-base-100 shadow-2xl">
+          <div className="card-body">
+            <h2 className="card-title">Añadir un nuevo gasto</h2>
+            <form onSubmit={handleFormSubmit}>
+              <div className="form-control w-full max-w-xs">
+                <label className="label">
+                  <span className="label-text">Qué te has comprado, pillín/a?</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Videojuego, zapatillas, etc.."
+                  className="input input-bordered w-full max-w-xs"
+                  onChange={(e) => handleInputChange(InputGasto.Name, e.target.value)}
+                  value={newGasto.name}
+                  required
+                />
+              </div>
+              <div className="form-control w-full max-w-xs">
+                <label className="label">
+                  <span className="label-text">Y cuánto te has gastado?</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Introduce el importe"
+                  className="input input-bordered w-full max-w-xs"
+                  onChange={(e) => handleInputChange(InputGasto.Price, e.target.value)}
+                  value={newGasto.price}
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Quieres agregar una descripción?</span>
+                  <span className="label-text-alt text-gray-400">Opcional</span>
+                </label>
+                <textarea
+                  className="textarea textarea-bordered h-24"
+                  placeholder="Descripción de tu compra"
+                  onChange={(e) => handleInputChange(InputGasto.Description, e.target.value)}
+                  value={newGasto.description}
+                />
+              </div>
+              <div className="card-actions justify-end mt-6">
+                <button className="btn btn-primary">Agregar gasto</button>
+              </div>
+            </form>
+            <ToastContainer />
           </div>
         </div>
-      </div>
-      <Dialog
-        className="flex fixed inset-0 z-10 overflow-y-auto"
-        initialFocus={completeButtonRef}
-        open={isOpen}
-        onClose={() => setIsOpen(false)}
-      >
-        <div className="flex items-center justify-center min-h-screen w-screen">
-          <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-          <div className="relative bg-white rounded max-w-120 p-8 mx-auto">
-            <Dialog.Title>Dialog Title</Dialog.Title>
-            <Dialog.Description>Dialog description</Dialog.Description>
-            <button
-              ref={completeButtonRef}
-              type="button"
-              className="inline-flex justify-center px-4 py-2 text-sm font-medium text-blue-900 bg-blue-100 border border-transparent rounded-md hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500"
-              onClick={() => setIsOpen(false)}
-            >
-              Got it, thanks!
-            </button>
-          </div>
-        </div>
-      </Dialog>
+      </main>
     </>
   );
 }
