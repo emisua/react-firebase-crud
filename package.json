@@ -11,6 +11,7 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "@firebase/firestore-types": "^2.5.1",
     "@headlessui/react": "^1.7.15",
     "daisyui": "^2.52.0",
     "firebase": "^9.22.2",
