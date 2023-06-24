@@ -6,7 +6,7 @@ interface Gastos {
 const Table = ({ gastos }: Gastos) => {
   return (
     <div className="overflow-x-auto">
-      <table className="table table-sm">
+      <table className="table table-sm w-full">
         {/* head */}
         <thead>
           <tr>
@@ -19,17 +19,21 @@ const Table = ({ gastos }: Gastos) => {
         </thead>
         <tbody>
           {/* rows*/}
-          {gastos.map(({ name, description, buyDate, id, price }) => (
-            <tr key={id}>
-              <td></td>
-              <td>{name}</td>
-              <td>{description}</td>
-              <td>{price}</td>
-              <th>
-                <button className="btn btn-ghost btn-xs">details</button>
-              </th>
-            </tr>
-          ))}
+          {gastos.map(({ name, description, buyDate, id, price }) => {
+            const gastoDate: string = buyDate?.toDate().toLocaleDateString('es-ES')!;
+            console.log({ gastoDate });
+            return (
+              <tr key={id}>
+                <td>{gastoDate}</td>
+                <td>{name}</td>
+                <td>{description}</td>
+                <td>{price}</td>
+                <th>
+                  <button className="btn btn-ghost btn-xs">details</button>
+                </th>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
